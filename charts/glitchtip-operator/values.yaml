@@ -1,0 +1,67 @@
+image:
+  repository: ghcr.io/the-software-smith/glitchtip-operator
+  tag: ""
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+glitchtip:
+  # Base URL of the GlitchTip instance, e.g. https://errors.example.com
+  url: ""
+  # API token with project:write (create/update) and project:admin (delete).
+  # Leave empty and set existingSecret to bring your own Secret.
+  token: ""
+  existingSecret: ""
+  existingSecretKey: token
+
+# Namespaces to watch for ProjectAlerts. Empty watches all namespaces (ClusterRole);
+# otherwise the operator gets a Role in each listed namespace only.
+watchNamespaces: []
+
+resyncIntervalSeconds: 300
+retryDelaySeconds: 60
+
+# Extra arguments for `kopf run`, e.g. ["--verbose"].
+extraArgs: []
+extraEnv: []
+
+crds:
+  install: true
+  # Keep the CRD (and so every ProjectAlert) on helm uninstall.
+  keep: true
+
+rbac:
+  create: true
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: [ALL]
+
+resources:
+  requests:
+    cpu: 10m
+    memory: 96Mi
+  limits:
+    memory: 192Mi
+
+priorityClassName: ""
+nodeSelector: {}
+tolerations: []
+affinity: {}

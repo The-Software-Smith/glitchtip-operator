@@ -1,0 +1,16 @@
+apiVersion: glitchtip.softwaresmith.io/v1alpha1
+kind: ProjectAlert
+metadata:
+  name: web-bursts
+spec:
+  organization: e2e
+  project: web
+  errors:
+    quantity: 50
+    timespanMinutes: 5
+  uptime: true
+  deletionPolicy: Orphan
+  recipients:
+    - type: email
+    - type: ntfy
+      url: https://ntfy.sh/my-team-alerts

@@ -1,0 +1,104 @@
+{{- if not .Values.glitchtip.url }}
+{{- fail "glitchtip.url is required" }}
+{{- end }}
+{{- if and (not .Values.glitchtip.token) (not .Values.glitchtip.existingSecret) }}
+{{- fail "set glitchtip.token or glitchtip.existingSecret" }}
+{{- end }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "glitchtip-operator.fullname" . }}
+  labels:
+    {{- include "glitchtip-operator.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "glitchtip-operator.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        {{- if .Values.glitchtip.token }}
+        checksum/token: {{ .Values.glitchtip.token | sha256sum }}
+        {{- end }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "glitchtip-operator.selectorLabels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "glitchtip-operator.serviceAccountName" . }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.priorityClassName }}
+      priorityClassName: {{ . }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: operator
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            {{- range .Values.watchNamespaces }}
+            - --namespace={{ . }}
+            {{- else }}
+            - --all-namespaces
+            {{- end }}
+            - --liveness=http://0.0.0.0:8080/healthz
+            {{- with .Values.extraArgs }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          env:
+            - name: GLITCHTIP_URL
+              value: {{ .Values.glitchtip.url | quote }}
+            - name: GLITCHTIP_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "glitchtip-operator.tokenSecret" . }}
+                  key: {{ if .Values.glitchtip.existingSecret }}{{ .Values.glitchtip.existingSecretKey }}{{ else }}token{{ end }}
+            - name: GLITCHTIP_RESYNC_SECONDS
+              value: {{ .Values.resyncIntervalSeconds | quote }}
+            - name: GLITCHTIP_RETRY_SECONDS
+              value: {{ .Values.retryDelaySeconds | quote }}
+            {{- with .Values.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          ports:
+            - name: health
+              containerPort: 8080
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: health
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

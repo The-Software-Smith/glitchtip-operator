@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: slack-webhook
+type: Opaque
+stringData:
+  url: https://example.com/replace-with-your-slack-webhook
+---
+apiVersion: glitchtip.softwaresmith.io/v1alpha1
+kind: ProjectAlert
+metadata:
+  name: api-new-issues
+spec:
+  organization: e2e
+  project: api
+  name: New issues to Slack
+  errors:
+    quantity: 1
+    timespanMinutes: 1
+  recipients:
+    - type: webhook
+      urlFrom:
+        secretKeyRef:
+          name: slack-webhook
+          key: url
+      tagsToAdd: [service, environment]

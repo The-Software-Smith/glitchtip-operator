@@ -1,0 +1,12 @@
+apiVersion: v2
+name: glitchtip-operator
+description: Manage GlitchTip project alerts as Kubernetes resources
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+home: https://github.com/The-Software-Smith/glitchtip-operator
+sources:
+  - https://github.com/The-Software-Smith/glitchtip-operator
+keywords: [glitchtip, sentry, alerts, operator]
+annotations:
+  artifacthub.io/license: Apache-2.0

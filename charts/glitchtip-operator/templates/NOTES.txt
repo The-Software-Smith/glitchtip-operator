@@ -1,0 +1,6 @@
+glitchtip-operator is managing ProjectAlerts against {{ .Values.glitchtip.url }}
+{{- if .Values.watchNamespaces }} in namespaces: {{ join ", " .Values.watchNamespaces }}{{ end }}.
+
+Check alert status with:
+
+  kubectl get projectalerts -A

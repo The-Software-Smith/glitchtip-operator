@@ -1,0 +1,180 @@
+{{- if .Values.crds.install }}
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: projectalerts.glitchtip.softwaresmith.io
+  labels:
+    {{- include "glitchtip-operator.labels" . | nindent 4 }}
+  {{- if .Values.crds.keep }}
+  annotations:
+    helm.sh/resource-policy: keep
+  {{- end }}
+spec:
+  group: glitchtip.softwaresmith.io
+  names:
+    kind: ProjectAlert
+    listKind: ProjectAlertList
+    plural: projectalerts
+    singular: projectalert
+    shortNames: [gtalert]
+    categories: [glitchtip]
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      subresources:
+        status: {}
+      additionalPrinterColumns:
+        - name: Organization
+          type: string
+          jsonPath: .spec.organization
+        - name: Project
+          type: string
+          jsonPath: .spec.project
+        - name: Alert ID
+          type: integer
+          jsonPath: .status.alertId
+        - name: Ready
+          type: string
+          jsonPath: .status.conditions[?(@.type=="Ready")].status
+        - name: Reason
+          type: string
+          jsonPath: .status.conditions[?(@.type=="Ready")].reason
+          priority: 1
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp
+      schema:
+        openAPIV3Schema:
+          type: object
+          required: [spec]
+          properties:
+            spec:
+              type: object
+              required: [organization, project]
+              x-kubernetes-validations:
+                - rule: has(self.errors) || (has(self.uptime) && self.uptime)
+                  message: set errors, uptime, or both
+              properties:
+                organization:
+                  type: string
+                  description: GlitchTip organization slug.
+                  minLength: 1
+                project:
+                  type: string
+                  description: GlitchTip project slug.
+                  minLength: 1
+                name:
+                  type: string
+                  description: Alert name in GlitchTip. Defaults to metadata.name. Existing alerts with this name are adopted.
+                errors:
+                  type: object
+                  description: Notify when an issue receives `quantity` events within `timespanMinutes`. Each issue notifies once per alert; quantity 1 and timespanMinutes 1 means "every new issue".
+                  required: [quantity, timespanMinutes]
+                  properties:
+                    quantity:
+                      type: integer
+                      minimum: 1
+                      maximum: 32767
+                    timespanMinutes:
+                      type: integer
+                      minimum: 1
+                      maximum: 32767
+                uptime:
+                  type: boolean
+                  description: Also notify on uptime monitor failures in this project.
+                  default: false
+                deletionPolicy:
+                  type: string
+                  enum: [Delete, Orphan]
+                  default: Delete
+                  description: Delete the GlitchTip alert when this resource is deleted, or leave it in place.
+                recipients:
+                  type: array
+                  items:
+                    type: object
+                    required: [type]
+                    x-kubernetes-validations:
+                      - rule: "!(has(self.url) && has(self.urlFrom))"
+                        message: set only one of url and urlFrom
+                      - rule: self.type == 'email' || has(self.url) || has(self.urlFrom)
+                        message: url or urlFrom is required for this recipient type
+                      - rule: self.type != 'zulip' || has(self.zulip)
+                        message: zulip settings are required for zulip recipients
+                    properties:
+                      type:
+                        type: string
+                        enum: [webhook, email, discord, googlechat, teams, ntfy, feishu, zulip]
+                        description: "`webhook` is GlitchTip's Slack-compatible webhook. `email` mails the project's team members."
+                      url:
+                        type: string
+                      urlFrom:
+                        type: object
+                        required: [secretKeyRef]
+                        properties:
+                          secretKeyRef:
+                            type: object
+                            required: [name, key]
+                            properties:
+                              name:
+                                type: string
+                              key:
+                                type: string
+                      tagsToAdd:
+                        type: array
+                        description: Event tags to include in the notification.
+                        items:
+                          type: string
+                      zulip:
+                        type: object
+                        required: [botEmail, apiKeyFrom, channel]
+                        properties:
+                          botEmail:
+                            type: string
+                          channel:
+                            type: string
+                          topic:
+                            type: string
+                          apiKeyFrom:
+                            type: object
+                            required: [secretKeyRef]
+                            properties:
+                              secretKeyRef:
+                                type: object
+                                required: [name, key]
+                                properties:
+                                  name:
+                                    type: string
+                                  key:
+                                    type: string
+            status:
+              type: object
+              x-kubernetes-preserve-unknown-fields: true
+              properties:
+                alertId:
+                  type: integer
+                organization:
+                  type: string
+                project:
+                  type: string
+                observedGeneration:
+                  type: integer
+                lastSyncTime:
+                  type: string
+                conditions:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                      status:
+                        type: string
+                      reason:
+                        type: string
+                      message:
+                        type: string
+                      lastTransitionTime:
+                        type: string
+{{- end }}

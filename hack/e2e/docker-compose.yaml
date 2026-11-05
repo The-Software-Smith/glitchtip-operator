@@ -1,0 +1,40 @@
+name: glitchtip-operator-e2e
+
+x-glitchtip-env: &glitchtip-env
+  DATABASE_URL: postgres://glitchtip:glitchtip@postgres:5432/glitchtip
+  REDIS_URL: redis://valkey:6379/0
+  SECRET_KEY: e2e-only-not-a-secret
+  GLITCHTIP_DOMAIN: http://localhost:8000
+  GLITCHTIP_EMBED_WORKER: "true"
+  ENABLE_USER_REGISTRATION: "false"
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: glitchtip
+      POSTGRES_PASSWORD: glitchtip
+      POSTGRES_DB: glitchtip
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "glitchtip"]
+      interval: 2s
+      retries: 30
+  valkey:
+    image: valkey/valkey:8
+  migrate:
+    image: glitchtip/glitchtip:${GLITCHTIP_VERSION:-6.2.3}
+    environment: *glitchtip-env
+    command: ./manage.py migrate --noinput
+    depends_on:
+      postgres:
+        condition: service_healthy
+  web:
+    image: glitchtip/glitchtip:${GLITCHTIP_VERSION:-6.2.3}
+    environment: *glitchtip-env
+    ports:
+      - "8000:8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      valkey:
+        condition: service_started
