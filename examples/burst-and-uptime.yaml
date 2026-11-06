@@ -13,4 +13,4 @@ spec:
   recipients:
     - type: email
     - type: ntfy
-      url: https://ntfy.sh/my-team-alerts
+      url: https://ntfy.example.com/my-team-alerts
